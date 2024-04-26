@@ -18,10 +18,10 @@ class CameraAction(Enum):
 class Env:
     def __init__(self, file_path):
 
-        image_p = Image.open(file_path).convert("L")
+        image = Image.open(file_path).convert("L")
+        image = np.array(image)
 
-        self.image = np.array(image_p)
-        self.image = np.swapaxes(self.image, 1, 0)
+        self.image = np.swapaxes(image, 1, 0)
 
         self.width = self.image.shape[0]
         self.height = self.image.shape[1]
@@ -37,7 +37,6 @@ class Env:
 
 class Camera:
 
-    # Initialize the grid size. Pass in an integer seed to make randomness (Targets) repeatable.
     def __init__(self, seed=None):
 
         self.env = Env("seg_255rgb.png")
@@ -48,21 +47,17 @@ class Camera:
         self.x_bound = self.env.width - self.width
         self.y_bound = self.env.height - self.height
 
-        self.step = 256
+        self.step = 64
         self.all_white_pixels = 412304
 
         self.reset(seed)
 
     def reset(self, seed=None):
-        # Initialize Camera's (top, left) corner starting position
-        self.position = [512, 512]
 
-        # Initialize map for rewards
-        self.seen_white_pixels = 0
-        self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
+        if seed == None:
+            self.position = [512, 512]  # (top, left) corner
 
-        # Random Camera position
-        if seed != None:
+        else:
             random.seed(seed)
             self.position = [
                 random.randint(0, self.x_bound),
@@ -71,66 +66,67 @@ class Camera:
 
         self.init_map()
 
-    def init_map(self):
+    def cam2map(self, x_cam, y_cam, x_begin, y_begin):
+        x_map = x_cam + x_begin
+        y_map = y_cam + y_begin
+        return x_map, y_map
 
-        cam_image = self.env.image[
-            self.position[0] : self.position[0] + self.width,
-            self.position[1] : self.position[1] + self.height,
-        ]
-
-        # Update map + get rewards
-        for x_cam in range(self.width):
-            for y_cam in range(self.height):
-                x_map = x_cam + self.position[0]
-                y_map = y_cam + self.position[1]
+    def fill_map(self, cam_image, x_begin, y_begin):
+        for x_cam in range(cam_image.shape[0]):
+            for y_cam in range(cam_image.shape[1]):
+                x_map, y_map = self.cam2map(x_cam, y_cam, x_begin, y_begin)
 
                 if cam_image[x_cam, y_cam] == WHITE:
                     if self.env_map[x_map, y_map] != 1:
                         self.env_map[x_map, y_map] = WHITE
                         self.seen_white_pixels += 1
 
-    def update_map_pixels(self, x_cam, y_cam):
-        x_map = x_cam + self.position[0]
-        y_map = y_cam + self.position[1]
-        self.env_map[x_map, y_map] = WHITE
-        self.seen_white_pixels += 1
+    def init_map(self):
+
+        self.seen_white_pixels = 0
+        self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
+
+        x_begin = self.position[0]
+        x_end = self.position[0] + self.width
+
+        y_begin = self.position[1]
+        y_end = self.position[1] + self.height
+
+        cam_image = self.env.image[x_begin:x_end, y_begin:y_end]
+        self.fill_map(cam_image, x_begin, y_begin)
 
     def update_map(self, action: CameraAction):
 
         if action == CameraAction.LEFT:
-            cam_image = self.env.image[
-                self.position[0] : self.position[0] + self.step,
-                self.position[1] : self.position[1] + self.height,
-            ]
+            x_begin = self.position[0]
+            x_end = self.position[0] + self.step
+
+            y_begin = self.position[1]
+            y_end = self.position[1] + self.height
 
         elif action == CameraAction.RIGHT:
-            cam_image = self.env.image[
-                self.position[0]
-                + self.width
-                - self.step : self.position[0]
-                + self.width,
-                self.position[1] : self.position[1] + self.height,
-            ]
+            x_begin = self.position[0] + self.width - self.step
+            x_end = self.position[0] + self.width
+
+            y_begin = self.position[1]
+            y_end = self.position[1] + self.height
 
         elif action == CameraAction.UP:
-            cam_image = self.env.image[
-                self.position[0] : self.position[0] + self.width,
-                self.position[1]
-                + self.height
-                - self.step : self.position[1]
-                + self.height,
-            ]
+            x_begin = self.position[0]
+            x_end = self.position[0] + self.width
+
+            y_begin = self.position[1]
+            y_end = self.position[1] + self.step
 
         elif action == CameraAction.DOWN:
-            cam_image = self.env.image[
-                self.position[0] : self.position[0] + self.width,
-                self.position[1] + self.step : self.position[1] + self.height,
-            ]
+            x_begin = self.position[0]
+            x_end = self.position[0] + self.width
 
-        for x_cam in range(cam_image.shape[0]):
-            for y_cam in range(cam_image.shape[1]):
-                if cam_image[x_cam, y_cam] == WHITE:
-                    self.update_map_pixels(x_cam, y_cam)
+            y_begin = self.position[1] + self.height - self.step
+            y_end = self.position[1] + self.height
+
+        cam_image = self.env.image[x_begin:x_end, y_begin:y_end]
+        self.fill_map(cam_image, x_begin, y_begin)
 
     def is_x_inside(self, x) -> bool:
         if x >= 0 and x <= self.x_bound:
@@ -166,15 +162,28 @@ class Camera:
                 action_succes = True
 
         if action_succes:
-            self.init_map()
-            # self.update_map(action) # not ready
+            self.update_map(action)
 
         # Return true if Camera reaches all pixels
         return self.seen_white_pixels == self.all_white_pixels
 
-    def render(self):
-        temp = np.swapaxes(self.env_map, 1, 0)
-        plt.imshow(temp)
+    def render(self, mark_position=False):
+        swapped_map = np.swapaxes(self.env_map, 1, 0)
+        mark_size = 40
+        mark_color = 128
+
+        if mark_position:
+            marked_map = swapped_map.__deepcopy__(None)
+            marked_map[
+                self.position[1] : self.position[1] + mark_size,
+                self.position[0] : self.position[0] + mark_size,
+            ] = (
+                np.ones((mark_size, mark_size)) * mark_color
+            )
+            plt.imshow(marked_map)
+        else:
+            plt.imshow(swapped_map)
+
         plt.show()
 
 
