@@ -52,6 +52,10 @@ class Camera:
 
         self.reset(seed)
 
+        plt.ion()
+        self.fig = plt.figure()
+        self.axes_img = plt.imshow(np.swapaxes(self.env_map, 1, 0))
+
     def reset(self, seed=None):
 
         if seed == None:
@@ -168,7 +172,9 @@ class Camera:
         return self.seen_white_pixels == self.all_white_pixels
 
     def render(self, mark_position=False):
+
         swapped_map = np.swapaxes(self.env_map, 1, 0)
+
         mark_size = 40
         mark_color = 128
 
@@ -180,20 +186,23 @@ class Camera:
             ] = (
                 np.ones((mark_size, mark_size)) * mark_color
             )
-            plt.imshow(marked_map)
-        else:
-            plt.imshow(swapped_map)
 
-        plt.show()
+            self.axes_img.set_data(marked_map)
+
+        else:
+            self.axes_img.set_data(swapped_map)
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
 
 if __name__ == "__main__":
     camera = Camera()
-    camera.render()
+    camera.render(True)
 
     for i in range(25):
         rand_action = random.choice(list(CameraAction))
         print(rand_action)
 
         camera.perform_action(rand_action)
-        camera.render()
+        camera.render(True)
