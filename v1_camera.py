@@ -3,8 +3,10 @@ import random
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
+import time
 
 WHITE = 255
+
 
 class CameraAction(Enum):
     UP = 0
@@ -12,11 +14,14 @@ class CameraAction(Enum):
     LEFT = 2
     RIGHT = 3
 
+
 class Env:
     def __init__(self, file_path):
-   
-        image = Image.open(file_path).convert('L')
-        self.image = np.array(image)
+
+        image_p = Image.open(file_path).convert("L")
+
+        self.image = np.array(image_p)
+        self.image = np.swapaxes(self.image, 1, 0)
 
         self.width = self.image.shape[0]
         self.height = self.image.shape[1]
@@ -25,16 +30,17 @@ class Env:
         couter = 0
         for row in range(self.height):
             for column in range(self.width):
-                if self.image[column,row] == 255:
-                    couter+=1
+                if self.image[column, row] == 255:
+                    couter += 1
         print(couter)
 
+
 class Camera:
-    
+
     # Initialize the grid size. Pass in an integer seed to make randomness (Targets) repeatable.
     def __init__(self, seed=None):
-    
-        self.env = Env('seg_255rgb.png')
+
+        self.env = Env("seg_255rgb.png")
 
         self.width = 256
         self.height = 256
@@ -49,31 +55,34 @@ class Camera:
 
     def reset(self, seed=None):
         # Initialize Camera's (top, left) corner starting position
-        self.position = [512,512] # (Y,X)
+        self.position = [512, 512]
 
         # Initialize map for rewards
         self.seen_white_pixels = 0
         self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
 
         # Random Camera position
-        if(seed != None):
+        if seed != None:
             random.seed(seed)
             self.position = [
                 random.randint(0, self.x_bound),
-                random.randint(0, self.y_bound)
+                random.randint(0, self.y_bound),
             ]
 
         self.init_map()
 
     def init_map(self):
-        
-        cam_image = self.env.image[self.position[1]:self.position[1]+self.height, self.position[0]:self.position[0]+self.width] 
+
+        cam_image = self.env.image[
+            self.position[0] : self.position[0] + self.width,
+            self.position[1] : self.position[1] + self.height,
+        ]
 
         # Update map + get rewards
         for x_cam in range(self.width):
             for y_cam in range(self.height):
-                x_map = x_cam + self.position[1] 
-                y_map = y_cam + self.position[0] 
+                x_map = x_cam + self.position[0]
+                y_map = y_cam + self.position[1]
 
                 if cam_image[x_cam, y_cam] == WHITE:
                     if self.env_map[x_map, y_map] != 1:
@@ -81,62 +90,79 @@ class Camera:
                         self.seen_white_pixels += 1
 
     def update_map_pixels(self, x_cam, y_cam):
-            x_map = x_cam + self.position[0] 
-            y_map = y_cam + self.position[1] 
-            self.env_map[x_map, y_map] = WHITE
-            self.seen_white_pixels += 1
+        x_map = x_cam + self.position[0]
+        y_map = y_cam + self.position[1]
+        self.env_map[x_map, y_map] = WHITE
+        self.seen_white_pixels += 1
 
-    def update_map(self, action:CameraAction):
+    def update_map(self, action: CameraAction):
 
-        if action == CameraAction.LEFT:         
-            cam_image = self.env.image[self.position[0]:self.position[0]+self.step,                        self.position[1]:self.position[1]+self.height] 
+        if action == CameraAction.LEFT:
+            cam_image = self.env.image[
+                self.position[0] : self.position[0] + self.step,
+                self.position[1] : self.position[1] + self.height,
+            ]
 
-        elif action == CameraAction.RIGHT:           
-            cam_image = self.env.image[self.position[0]+self.width-self.step:self.position[0]+self.width,  self.position[1]:self.position[1]+self.height] 
+        elif action == CameraAction.RIGHT:
+            cam_image = self.env.image[
+                self.position[0]
+                + self.width
+                - self.step : self.position[0]
+                + self.width,
+                self.position[1] : self.position[1] + self.height,
+            ]
 
-        elif action == CameraAction.UP:           
-            cam_image = self.env.image[self.position[0]:self.position[0]+self.width,  self.position[1]+self.height - self.step:self.position[1]+self.height] 
+        elif action == CameraAction.UP:
+            cam_image = self.env.image[
+                self.position[0] : self.position[0] + self.width,
+                self.position[1]
+                + self.height
+                - self.step : self.position[1]
+                + self.height,
+            ]
 
         elif action == CameraAction.DOWN:
-            cam_image = self.env.image[self.position[0]:self.position[0]+self.width,  self.position[1]+self.step:self.position[1]+self.height] 
+            cam_image = self.env.image[
+                self.position[0] : self.position[0] + self.width,
+                self.position[1] + self.step : self.position[1] + self.height,
+            ]
 
-    
         for x_cam in range(cam_image.shape[0]):
             for y_cam in range(cam_image.shape[1]):
                 if cam_image[x_cam, y_cam] == WHITE:
-                    self.update_map_pixels(x_cam, y_cam)  
+                    self.update_map_pixels(x_cam, y_cam)
 
     def is_x_inside(self, x) -> bool:
         if x >= 0 and x <= self.x_bound:
             return True
         return False
-    
+
     def is_y_inside(self, y) -> bool:
         if y >= 0 and y <= self.y_bound:
             return True
-        return False 
+        return False
 
-    def perform_action(self, action:CameraAction) -> bool:
+    def perform_action(self, action: CameraAction) -> bool:
         action_succes = False
 
         if action == CameraAction.LEFT:
-            if self.is_x_inside(self.position[0]-self.step):
-                self.position[0]-=self.step
+            if self.is_x_inside(self.position[0] - self.step):
+                self.position[0] -= self.step
                 action_succes = True
 
         elif action == CameraAction.RIGHT:
-            if self.is_x_inside(self.position[0]+self.step):
-                self.position[0]+=self.step
+            if self.is_x_inside(self.position[0] + self.step):
+                self.position[0] += self.step
                 action_succes = True
 
         elif action == CameraAction.UP:
-            if self.is_y_inside(self.position[1]-self.step):
-                self.position[1]-=self.step
+            if self.is_y_inside(self.position[1] - self.step):
+                self.position[1] -= self.step
                 action_succes = True
 
         elif action == CameraAction.DOWN:
-            if self.is_y_inside(self.position[1]+self.step):
-                self.position[1]+=self.step  
+            if self.is_y_inside(self.position[1] + self.step):
+                self.position[1] += self.step
                 action_succes = True
 
         if action_succes:
@@ -147,12 +173,12 @@ class Camera:
         return self.seen_white_pixels == self.all_white_pixels
 
     def render(self):
-        plt.imshow(self.env_map)
+        temp = np.swapaxes(self.env_map, 1, 0)
+        plt.imshow(temp)
         plt.show()
 
 
-# For unit testing
-if __name__=="__main__":
+if __name__ == "__main__":
     camera = Camera()
     camera.render()
 
