@@ -75,29 +75,31 @@ class Camera:
         y_map = y_cam + y_begin
         return x_map, y_map
 
-    def fill_map(self, cam_image, x_begin, y_begin):
-        for x_cam in range(cam_image.shape[0]):
-            for y_cam in range(cam_image.shape[1]):
+    def fill_map(self, image, x_begin, y_begin):
+        for x_cam in range(image.shape[0]):
+            for y_cam in range(image.shape[1]):
                 x_map, y_map = self.cam2map(x_cam, y_cam, x_begin, y_begin)
 
-                if cam_image[x_cam, y_cam] == WHITE:
+                if image[x_cam, y_cam] == WHITE:
                     if self.env_map[x_map, y_map] != 1:
                         self.env_map[x_map, y_map] = WHITE
                         self.seen_white_pixels += 1
 
     def init_map(self):
-
         self.seen_white_pixels = 0
         self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
 
+        self.update_obs()
+        self.fill_map(self.image, self.position[0], self.position[1])
+
+    def update_obs(self):
         x_begin = self.position[0]
         x_end = self.position[0] + self.width
 
         y_begin = self.position[1]
         y_end = self.position[1] + self.height
 
-        cam_image = self.env.image[x_begin:x_end, y_begin:y_end]
-        self.fill_map(cam_image, x_begin, y_begin)
+        self.image = self.env.image[x_begin:x_end, y_begin:y_end, np.newaxis].astype(np.uint8)
 
     def update_map(self, action: CameraAction):
 
@@ -129,8 +131,9 @@ class Camera:
             y_begin = self.position[1] + self.height - self.step
             y_end = self.position[1] + self.height
 
-        cam_image = self.env.image[x_begin:x_end, y_begin:y_end]
-        self.fill_map(cam_image, x_begin, y_begin)
+        cropped_image = self.env.image[x_begin:x_end, y_begin:y_end].astype(np.uint8)
+        self.fill_map(cropped_image, x_begin, y_begin)
+        self.update_obs()
 
     def is_x_inside(self, x) -> bool:
         if x >= 0 and x <= self.x_bound:
@@ -169,7 +172,7 @@ class Camera:
             self.update_map(action)
 
         # Return true if Camera reaches all pixels
-        return self.seen_white_pixels == self.all_white_pixels
+        return self.seen_white_pixels == int(self.all_white_pixels*0.9)
 
     def render(self, mark_position=False):
 

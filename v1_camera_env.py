@@ -21,7 +21,7 @@ class CameraEnv(gym.Env):
 
         self.final_reward = 100
         self.time_factor = 1
-        self.step_limit = 200
+        self.step_limit = 500
 
         self.step_counter = 0
         self.render_mode = render_mode
@@ -32,9 +32,9 @@ class CameraEnv(gym.Env):
 
         self.observation_space = spaces.Box(
             low=0,
-            high=np.array([self.camera.x_bound, self.camera.y_bound]),
-            shape=(2,),
-            dtype=np.int64,
+            high=255,
+            shape=(1, 256, 256),  # 65536 = self.camera.image.flatten()
+            dtype=np.uint8,
         )
 
     def reset(self, seed=None, options=None):
@@ -43,7 +43,8 @@ class CameraEnv(gym.Env):
         self.camera.reset(seed=seed)
         self.step_counter = 0
 
-        observations = np.array(self.camera.position)
+        # observations = self.camera.image.flatten()
+        observations = self.camera.image.swapaxes(0, 2)
 
         info = {}
 
@@ -71,7 +72,8 @@ class CameraEnv(gym.Env):
             reward += self.final_reward
             terminated = True
 
-        observations = np.array(self.camera.position)
+        # observations = self.camera.image.flatten()
+        observations = self.camera.image.swapaxes(0, 2)
 
         info = {}
 
