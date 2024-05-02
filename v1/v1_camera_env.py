@@ -13,13 +13,11 @@ register(
 
 
 class CameraEnv(gym.Env):
-    # render_modes in our environment is either None or 'human'.
-    # render_fps is not used in our env, but we are require to declare a non-zero value.
     metadata = {"render_modes": ["human"], "render_fps": 1}
 
     def __init__(self, render_mode=None):
 
-        self.final_reward = 100
+        self.final_reward = 1000
         self.time_factor = 100
         self.step_limit = 500
 
