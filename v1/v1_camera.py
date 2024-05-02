@@ -3,7 +3,6 @@ import random
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
-import time
 
 WHITE = 255
 
@@ -47,7 +46,7 @@ class Camera:
         self.x_bound = self.env.width - self.width
         self.y_bound = self.env.height - self.height
 
-        self.step = 64
+        self.step = 16
         self.all_white_pixels = 412304
 
         self.reset(seed)
@@ -59,7 +58,7 @@ class Camera:
     def reset(self, seed=None):
 
         if seed == None:
-            self.position = [512, 512]  # (top, left) corner
+            self.position = [516, 516]  # (top, left) corner
 
         else:
             random.seed(seed)
@@ -81,7 +80,7 @@ class Camera:
                 x_map, y_map = self.cam2map(x_cam, y_cam, x_begin, y_begin)
 
                 if image[x_cam, y_cam] == WHITE:
-                    if self.env_map[x_map, y_map] != 1:
+                    if self.env_map[x_map, y_map] != WHITE:
                         self.env_map[x_map, y_map] = WHITE
                         self.seen_white_pixels += 1
 
@@ -99,7 +98,9 @@ class Camera:
         y_begin = self.position[1]
         y_end = self.position[1] + self.height
 
-        self.image = self.env.image[x_begin:x_end, y_begin:y_end, np.newaxis].astype(np.uint8)
+        self.image = self.env.image[x_begin:x_end, y_begin:y_end, np.newaxis].astype(
+            np.uint8
+        )
 
     def update_map(self, action: CameraAction):
 
@@ -172,7 +173,7 @@ class Camera:
             self.update_map(action)
 
         # Return true if Camera reaches all pixels
-        return self.seen_white_pixels == int(self.all_white_pixels*0.9)
+        return self.seen_white_pixels == int(self.all_white_pixels * 0.9)
 
     def render(self, mark_position=False):
 

@@ -20,7 +20,7 @@ class CameraEnv(gym.Env):
     def __init__(self, render_mode=None):
 
         self.final_reward = 100
-        self.time_factor = 1
+        self.time_factor = 100
         self.step_limit = 500
 
         self.step_counter = 0
@@ -78,7 +78,11 @@ class CameraEnv(gym.Env):
         info = {}
 
         if self.render_mode == "human":
-            print(cam.CameraAction(action))
+            print(
+                cam.CameraAction(action),
+                reward,
+            )
+            print()
             self.render()
 
         return observations, reward, terminated, truncated, info

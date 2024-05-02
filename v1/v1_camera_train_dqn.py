@@ -7,15 +7,14 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
-import v1_camera_env as v1_camera_env  # Even though we don't use this class here, we should include it here so that it registers the Camera environment.
+import v1_camera_env as v1_camera_env
 
 
-# Define model
+# https://poloclub.github.io/cnn-explainer/
 class DQN(nn.Module):
     def __init__(self, input_shape, out_actions):
         super().__init__()
 
-        # https://poloclub.github.io/cnn-explainer/
         self.conv_block1 = nn.Sequential(
             nn.Conv2d(
                 in_channels=input_shape,
@@ -47,7 +46,7 @@ class DQN(nn.Module):
         self.layer_stack = nn.Sequential(
             nn.Flatten(),  # flatten inputs into a single vector
             # After flattening the matrix into a vector, pass it to the output layer. To determine the input shape, use the print() statement in forward()
-            nn.Linear(in_features=64*64, out_features=out_actions),
+            nn.Linear(in_features=64 * 64 * 10, out_features=out_actions),
         )
 
     def forward(self, x):
@@ -55,14 +54,13 @@ class DQN(nn.Module):
         x = self.conv_block2(x)
         # print(x.shape)  # Use this to determine input shape of the output layer.
         x = self.layer_stack(x)
-        # print(x.shape)
         return x
 
 
-# # Use this to check if DQN is valid
-# temp_dqn = DQN(1, 4)  # (3 channels, 4 actions)
-# temp_tensor = torch.randn(1, 1, 256, 256)  # (batch, channel, row, column)
-# temp_dqn(temp_tensor)
+# Use this to check if DQN is valid
+temp_dqn = DQN(1, 4)  # (1 channels, 4 actions)
+temp_tensor = torch.randn(1, 1, 256, 256)  # (batch, channel, row, column)
+temp_dqn(temp_tensor)
 
 
 # Define memory for Experience Replay
@@ -90,9 +88,7 @@ class CameraDQL:
     mini_batch_size = 32  # size of the training data set sampled from the replay memory
 
     # Neural Network
-    loss_fn = (
-        nn.MSELoss()
-    )  # NN Loss function. MSE=Mean Squared Error can be swapped to something else.
+    loss_fn = nn.MSELoss()
     optimizer = None  # NN Optimizer. Initialize later.
 
     ACTIONS = [
@@ -102,9 +98,10 @@ class CameraDQL:
         "R",
     ]
 
-    # Train the FrozeLake environment
+    def state2tensor(self, state):
+        return torch.unsqueeze(torch.from_numpy(state.astype(np.float32)), 0)
+
     def train(self, episodes, render=False, is_slippery=False):
-        # Create FrozenLake instance
         env = gym.make("camera-v1", render_mode="human" if render else None)
         # num_states = env.observation_space.n
         num_actions = env.action_space.n
@@ -137,6 +134,9 @@ class CameraDQL:
         step_count = 0
 
         for i in range(episodes):
+
+            print(f'Episode [{i}]')
+
             state = env.reset()[0]  # Initialize to state 0
             terminated = False  # True when agent falls in hole or reached goal
             truncated = False  # True when agent takes more than 200 actions
@@ -151,12 +151,8 @@ class CameraDQL:
                 else:
                     # select best action
                     with torch.no_grad():
-                        action = (
-                            policy_dqn(torch.from_numpy(state.astype(np.float32)))
-                            .argmax()
-                            .item()
-                        )
-                        print(policy_dqn(torch.from_numpy(state.astype(np.float32))))
+                        state_tensor = self.state2tensor(state)
+                        action = policy_dqn(state_tensor).argmax().item()
 
                 # Execute action
                 new_state, reward, terminated, truncated, _ = env.step(action)
@@ -188,13 +184,10 @@ class CameraDQL:
                     target_dqn.load_state_dict(policy_dqn.state_dict())
                     step_count = 0
 
-        # Close environment
         env.close()
 
-        # Save policy
         torch.save(policy_dqn.state_dict(), "camera_dql_cnn.pt")
 
-        # Create new graph
         plt.figure(1)
 
         # Plot average rewards (Y-axis) vs episodes (X-axis)
@@ -208,7 +201,6 @@ class CameraDQL:
         plt.subplot(122)  # plot on a 1 row x 2 col grid, at cell 2
         plt.plot(epsilon_history)
 
-        # Save plots
         plt.savefig("camera_dql_cnn.png")
 
     # Optimize policy network
@@ -226,20 +218,19 @@ class CameraDQL:
             else:
                 # Calculate target q value
                 with torch.no_grad():
+                    new_state_tensor = self.state2tensor(new_state)
                     target = torch.FloatTensor(
                         reward
-                        + self.discount_factor_g
-                        * target_dqn(
-                            torch.from_numpy(new_state.astype(np.float32))
-                        ).max()
+                        + self.discount_factor_g * target_dqn(new_state_tensor).max()
                     )
 
             # Get the current set of Q values
-            current_q = policy_dqn(torch.from_numpy(state.astype(np.float32)))
+            state_tensor = self.state2tensor(state)
+            current_q = policy_dqn(state_tensor)
             current_q_list.append(current_q)
 
             # Get the target set of Q values
-            target_q = target_dqn(torch.from_numpy(state.astype(np.float32)))
+            target_q = target_dqn(state_tensor)
 
             # Adjust the specific action to the target that was just calculated.
             # Target_q[batch][action], hardcode batch to 0 because there is only 1 batch.
@@ -254,22 +245,16 @@ class CameraDQL:
         loss.backward()
         self.optimizer.step()
 
-    # Run the FrozeLake environment with the learned policy
-    def test(self, episodes, is_slippery=False):
-        # Create FrozenLake instance
-        env = gym.make(
-            "FrozenLake-v1",
-            map_name="4x4",
-            is_slippery=is_slippery,
-            render_mode="human",
-        )
+    def test(self, episodes):
+        env = gym.make("camera-v1", render_mode="human")
+
         # num_states = env.observation_space.n
         num_actions = env.action_space.n
 
         # Load learned policy
         policy_dqn = DQN(input_shape=1, out_actions=num_actions)
-        policy_dqn.load_state_dict(torch.load("frozen_lake_dql_cnn.pt"))
-        policy_dqn.eval()  # switch model to evaluation mode
+        policy_dqn.load_state_dict(torch.load("camera_dql_cnn.pt"))
+        policy_dqn.eval()
 
         # print("Policy (trained):")
         # self.print_dqn(policy_dqn)
@@ -283,7 +268,8 @@ class CameraDQL:
             while not terminated and not truncated:
                 # Select best action
                 with torch.no_grad():
-                    action = policy_dqn(state).argmax().item()
+                    state_tensor = self.state2tensor(state)
+                    action = policy_dqn(state_tensor).argmax().item()
 
                 # Execute action
                 state, reward, terminated, truncated, _ = env.step(action)
