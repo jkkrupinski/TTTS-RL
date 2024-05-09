@@ -7,6 +7,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import v1_camera_env as v1_camera_env
+import time
+import datetime
 
 
 # https://poloclub.github.io/cnn-explainer/
@@ -89,6 +91,10 @@ class CameraDQL:
 
         self.memory = ReplayMemory(self.replay_memory_size)
 
+        # to refactor
+        self.loss_list = []
+        self.save_every = 100
+
     def init_hyperparams(self):
         self.learning_rate = 0.001  # learning rate
         self.gamma = 0.9  # discount rate
@@ -133,16 +139,23 @@ class CameraDQL:
         sum_rewards = np.zeros(episodes)
         for x in range(episodes):
             sum_rewards[x] = np.sum(rewards_per_episode[max(0, x - 100) : (x + 1)])
-        plt.subplot(121)  # plot on a 1 row x 2 col grid, at cell 1
+        plt.subplot(131)  # plot on a 1 row x 2 col grid, at cell 1
         plt.plot(sum_rewards)
 
         # Plot epsilon decay (Y-axis) vs episodes (X-axis)
-        plt.subplot(122)  # plot on a 1 row x 2 col grid, at cell 2
+        plt.subplot(132)  # plot on a 1 row x 2 col grid, at cell 2
         plt.plot(epsilon_history)
+
+        # Plot calculated loss
+        plt.subplot(133)
+        plt.plot(self.loss_list)
 
         plt.savefig(name)
 
     def train(self, episodes):
+
+        t_train = time.time()
+
         epsilon = 1  # 1 = 100% random actions
 
         self.policy_dqn = self.build_model()
@@ -166,8 +179,7 @@ class CameraDQL:
         step_count = 0
 
         for i in range(episodes):
-
-            print(f"Episode [{i}]")
+            t_start = time.time()
 
             state = self.env.reset()[0]  # Initialize to state 0
             terminated = False  # True when agent falls in hole or reached goal
@@ -216,6 +228,17 @@ class CameraDQL:
                     self.target_dqn.load_state_dict(self.policy_dqn.state_dict())
                     step_count = 0
 
+            t_end = time.time()
+            t_episode = t_end - t_start
+            print(f"Episode [{i}] took: {round(t_episode,2)}")
+
+            if i % self.save_every == 0:  # save every 100th episode
+                ct = datetime.datetime.now()
+                self.save("models/"+ ct.__str__() + ".pt")
+
+        t_train = time.time() - t_train
+        print(f"Train time: {round(t_train, 1)}")
+
         self.env.close()
 
         self.save("camera_dql_cnn.pt")
@@ -249,6 +272,7 @@ class CameraDQL:
 
             # Get the target set of Q values
             target_q = self.target_dqn(state_tensor)
+            # print(target_q.shape) # we schould update only 1 qvalue corresponding to the action
 
             # Adjust the specific action to the target that was just calculated.
             # Target_q[batch][action], hardcode batch to 0 because there is only 1 batch.
@@ -257,6 +281,7 @@ class CameraDQL:
 
         # Compute loss for the whole minibatch
         loss = self.loss_fn(torch.stack(current_q_list), torch.stack(target_q_list))
+        self.loss_list.append(loss.item())  # save for printing
 
         # Optimize the model
         self.optimizer.zero_grad()
@@ -277,6 +302,13 @@ class CameraDQL:
                 # Select best action
                 with torch.no_grad():
                     state_tensor = self.state2tensor(state)
+
+                    # a = self.policy_dqn(state_tensor).tolist()[0]
+                    # print()
+                    # print(self.actions)
+                    # a = [int(item) for item in a]
+                    # print(a)
+
                     action = self.policy_dqn(state_tensor).argmax().item()
 
                 # Execute action
@@ -288,7 +320,7 @@ class CameraDQL:
 if __name__ == "__main__":
 
     camera_dql = CameraDQL()
-    camera_dql.train(10)
+    camera_dql.train(40)
 
     camera_dql = CameraDQL(True)
     camera_dql.test(10)

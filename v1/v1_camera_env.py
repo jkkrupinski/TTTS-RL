@@ -24,6 +24,7 @@ class CameraEnv(gym.Env):
         self.step_counter = 0
         self.render_mode = render_mode
 
+        seed = 44
         self.camera = cam.Camera()
 
         self.action_space = spaces.Discrete(len(cam.CameraAction))
