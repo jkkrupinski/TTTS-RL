@@ -234,7 +234,7 @@ class CameraDQL:
 
             if i % self.save_every == 0:  # save every 100th episode
                 ct = datetime.datetime.now()
-                self.save("models/"+ ct.__str__() + ".pt")
+                self.save("models/" + ct.__str__() + ".pt")
 
         t_train = time.time() - t_train
         print(f"Train time: {round(t_train, 1)}")
@@ -268,16 +268,15 @@ class CameraDQL:
             # Get the current set of Q values
             state_tensor = self.state2tensor(state)
             current_q = self.policy_dqn(state_tensor)
-            current_q_list.append(current_q)
+            current_q_list.append(current_q[0][action])
 
             # Get the target set of Q values
             target_q = self.target_dqn(state_tensor)
-            # print(target_q.shape) # we schould update only 1 qvalue corresponding to the action
 
             # Adjust the specific action to the target that was just calculated.
             # Target_q[batch][action], hardcode batch to 0 because there is only 1 batch.
             target_q[0][action] = target
-            target_q_list.append(target_q)
+            target_q_list.append(target_q[0][action])
 
         # Compute loss for the whole minibatch
         loss = self.loss_fn(torch.stack(current_q_list), torch.stack(target_q_list))

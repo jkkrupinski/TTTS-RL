@@ -71,9 +71,10 @@ Agent is learning a policy using Deep Q-Learning (DQL) with 2 custom convolution
 - change displaying figure when render = False
 - saving model every X episodes with different names
 - capturing learning time and debug info
-- add plots to improve learning
+- add plots to improve learning interactive
 - optimize calculations e.g. normalize image pixels
 - finish README
 - play with parameters [num episodes, hyperparameters, step_size, viewport_size]
 - v2 with mujoco enviroment
 - spelling check
+- alternative algorithm for mapping (split viewport into 4 parts calc each parts whit pixels decide on that)
