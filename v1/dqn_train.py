@@ -6,9 +6,8 @@ import random
 import torch
 from torch import nn
 import torch.nn.functional as F
-import v1_camera_env as v1_camera_env
+import camera_env as camera_env
 import time
-import datetime
 
 
 # https://poloclub.github.io/cnn-explainer/
@@ -93,7 +92,7 @@ class CameraDQL:
 
         # to refactor
         self.loss_list = []
-        self.save_every = 100
+        self.save_every = 200
 
     def init_hyperparams(self):
         self.learning_rate = 0.001  # learning rate
@@ -116,6 +115,8 @@ class CameraDQL:
         ]
 
     def state2tensor(self, state):
+        WHITE = 255
+        state = state / WHITE
         return torch.unsqueeze(torch.from_numpy(state.astype(np.float32)), 0)
 
     def build_model(self):
@@ -232,18 +233,17 @@ class CameraDQL:
             t_episode = t_end - t_start
             print(f"Episode [{i}] took: {round(t_episode,2)}")
 
-            if i % self.save_every == 0:  # save every 100th episode
-                ct = datetime.datetime.now()
-                self.save("models/" + ct.__str__() + ".pt")
+            if i % self.save_every == 0 and i != 0:
+                self.save("models/model_" + str(i) + ".pt")
 
         t_train = time.time() - t_train
         print(f"Train time: {round(t_train, 1)}")
 
         self.env.close()
 
-        self.save("camera_dql_cnn.pt")
+        self.save("models/model_fin.pt")
 
-        self.plot("camera_dql_cnn.png", episodes, rewards_per_episode, epsilon_history)
+        self.plot("plots.png", episodes, rewards_per_episode, epsilon_history)
 
     # Optimize policy network
     def optimize(self, mini_batch):
@@ -255,7 +255,6 @@ class CameraDQL:
 
             if terminated:
                 # Agent either reached goal (reward=1) or fell into hole (reward=0)
-                # When in a terminated state, target q value should be set to the reward.
                 target = torch.FloatTensor([reward])
             else:
                 # Calculate target q value
@@ -289,7 +288,7 @@ class CameraDQL:
 
     def test(self, episodes):
 
-        self.policy_dqn = self.load("camera_dql_cnn.pt")
+        self.policy_dqn = self.load("models/model_fin.pt")
         self.policy_dqn.eval()
 
         for _ in range(episodes):
@@ -301,13 +300,6 @@ class CameraDQL:
                 # Select best action
                 with torch.no_grad():
                     state_tensor = self.state2tensor(state)
-
-                    # a = self.policy_dqn(state_tensor).tolist()[0]
-                    # print()
-                    # print(self.actions)
-                    # a = [int(item) for item in a]
-                    # print(a)
-
                     action = self.policy_dqn(state_tensor).argmax().item()
 
                 # Execute action
@@ -319,7 +311,7 @@ class CameraDQL:
 if __name__ == "__main__":
 
     camera_dql = CameraDQL()
-    camera_dql.train(40)
+    camera_dql.train(10000)
 
-    camera_dql = CameraDQL(True)
-    camera_dql.test(10)
+    # camera_dql = CameraDQL(True)
+    # camera_dql.test(10)

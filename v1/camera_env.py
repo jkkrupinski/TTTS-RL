@@ -3,12 +3,12 @@ from gymnasium import spaces
 from gymnasium.envs.registration import register
 from gymnasium.utils.env_checker import check_env
 
-import v1_camera as cam
+import camera as cam
 import numpy as np
 
 register(
     id="camera-v1",
-    entry_point="v1_camera_env:CameraEnv",
+    entry_point="camera_env:CameraEnv",
 )
 
 
@@ -19,7 +19,7 @@ class CameraEnv(gym.Env):
 
         self.final_reward = 1000
         self.time_factor = 100
-        self.step_limit = 500
+        self.step_limit = 100
 
         self.step_counter = 0
         self.render_mode = render_mode
@@ -32,7 +32,7 @@ class CameraEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(1, 256, 256),  # 65536 = self.camera.image.flatten()
+            shape=(1, 256, 256),
             dtype=np.uint8,
         )
 
@@ -42,7 +42,6 @@ class CameraEnv(gym.Env):
         self.camera.reset(seed=seed)
         self.step_counter = 0
 
-        # observations = self.camera.image.flatten()
         observations = self.camera.image.swapaxes(0, 2)
 
         info = {}

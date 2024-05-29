@@ -46,8 +46,8 @@ class Camera:
         self.x_bound = self.env.width - self.width
         self.y_bound = self.env.height - self.height
 
-        self.step = 16
-        self.all_white_pixels = 412304
+        self.step = 32
+        self.all_white_pixels = int(412304* 0.8)
 
         self.reset(seed)
 
@@ -58,7 +58,7 @@ class Camera:
     def reset(self, seed=None):
 
         if seed == None:
-            self.position = [516, 516]  # (top, left) corner
+            self.position = [768, 516]  # (top, left) corner
 
         else:
             random.seed(seed)
@@ -175,7 +175,7 @@ class Camera:
         # Return true if Camera reaches all pixels
         return self.seen_white_pixels == int(self.all_white_pixels * 0.9)
 
-    def render(self, mark_position=False):
+    def render(self, mark_position=True):
 
         swapped_map = np.swapaxes(self.env_map, 1, 0)
 
