@@ -1,7 +1,6 @@
 from enum import Enum
 import random
 import numpy as np
-from PIL import Image
 from matplotlib import pyplot as plt
 
 WHITE = 255
@@ -14,40 +13,22 @@ class CameraAction(Enum):
     RIGHT = 3
 
 
-class Env:
-    def __init__(self, file_path):
-
-        image = Image.open(file_path).convert("L")
-        image = np.array(image)
-
-        self.image = np.swapaxes(image, 1, 0)
-
-        self.width = self.image.shape[0]
-        self.height = self.image.shape[1]
-
-    def count_white_pixels(self):
-        couter = 0
-        for row in range(self.height):
-            for column in range(self.width):
-                if self.image[column, row] == 255:
-                    couter += 1
-        print(couter)
-
-
 class Camera:
 
-    def __init__(self, seed=None):
+    def __init__(self, env, viewport_width, viewport_height, step_size, seed=None):
 
-        self.env = Env("seg_255rgb.png")
+        self.env = env
 
-        self.width = 256
-        self.height = 256
+        self.width = viewport_width
+        self.height = viewport_height
 
         self.x_bound = self.env.width - self.width
         self.y_bound = self.env.height - self.height
 
-        self.step = 32
-        self.all_white_pixels = int(412304* 0.8)
+        self.step = step_size
+
+        self.start_x = 768
+        self.start_y = 516
 
         self.reset(seed)
 
@@ -58,7 +39,7 @@ class Camera:
     def reset(self, seed=None):
 
         if seed == None:
-            self.position = [768, 516]  # (top, left) corner
+            self.position = [self.start_x, self.start_y]  # (top, left) corner
 
         else:
             random.seed(seed)
@@ -69,40 +50,44 @@ class Camera:
 
         self.init_map()
 
-    def cam2map(self, x_cam, y_cam, x_begin, y_begin):
-        x_map = x_cam + x_begin
-        y_map = y_cam + y_begin
-        return x_map, y_map
+    def init_map(self):
 
-    def fill_map(self, image, x_begin, y_begin):
-        for x_cam in range(image.shape[0]):
-            for y_cam in range(image.shape[1]):
+        self.seen_white_pixels = 0
+        self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
+
+        self.get_observation()
+        self.fill_map(self.observation, self.position[0], self.position[1])
+
+    def update_map(self, action: CameraAction):
+
+        partial_observation, x_begin, y_begin = self.get_partial_observation(action)
+        self.fill_map(partial_observation, x_begin, y_begin)
+        self.get_observation()
+
+    def fill_map(self, observation, x_begin, y_begin):
+        
+        for x_cam in range(observation.shape[0]):
+            for y_cam in range(observation.shape[1]):
                 x_map, y_map = self.cam2map(x_cam, y_cam, x_begin, y_begin)
 
-                if image[x_cam, y_cam] == WHITE:
+                if observation[x_cam, y_cam] == WHITE:
                     if self.env_map[x_map, y_map] != WHITE:
                         self.env_map[x_map, y_map] = WHITE
                         self.seen_white_pixels += 1
 
-    def init_map(self):
-        self.seen_white_pixels = 0
-        self.env_map = np.zeros((self.env.width, self.env.height), dtype=np.int32)
+    def get_observation(self):
 
-        self.update_obs()
-        self.fill_map(self.image, self.position[0], self.position[1])
-
-    def update_obs(self):
         x_begin = self.position[0]
         x_end = self.position[0] + self.width
 
         y_begin = self.position[1]
         y_end = self.position[1] + self.height
 
-        self.image = self.env.image[x_begin:x_end, y_begin:y_end, np.newaxis].astype(
-            np.uint8
-        )
+        self.observation = self.env.image[
+            x_begin:x_end, y_begin:y_end, np.newaxis
+        ].astype(np.uint8)
 
-    def update_map(self, action: CameraAction):
+    def get_partial_observation(self, action):
 
         if action == CameraAction.LEFT:
             x_begin = self.position[0]
@@ -132,9 +117,17 @@ class Camera:
             y_begin = self.position[1] + self.height - self.step
             y_end = self.position[1] + self.height
 
-        cropped_image = self.env.image[x_begin:x_end, y_begin:y_end].astype(np.uint8)
-        self.fill_map(cropped_image, x_begin, y_begin)
-        self.update_obs()
+        partial_observation = self.env.image[x_begin:x_end, y_begin:y_end].astype(
+            np.uint8
+        )
+
+        return partial_observation, x_begin, y_begin
+
+    def cam2map(self, x_cam, y_cam, x_begin, y_begin):
+        x_map = x_cam + x_begin
+        y_map = y_cam + y_begin
+
+        return x_map, y_map
 
     def is_x_inside(self, x) -> bool:
         if x >= 0 and x <= self.x_bound:
@@ -173,7 +166,7 @@ class Camera:
             self.update_map(action)
 
         # Return true if Camera reaches all pixels
-        return self.seen_white_pixels == int(self.all_white_pixels * 0.9)
+        return action_succes
 
     def render(self, mark_position=True):
 

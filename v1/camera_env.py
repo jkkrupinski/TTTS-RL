@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.registration import register
 from gymnasium.utils.env_checker import check_env
+from PIL import Image
 
 import camera as cam
 import numpy as np
@@ -11,6 +12,34 @@ register(
     entry_point="camera_env:CameraEnv",
 )
 
+WHITE = 255
+
+
+class Placenta:
+    def __init__(self, file_path):
+
+        self.image = self.load_image(file_path)
+
+        self.width = self.image.shape[0]
+        self.height = self.image.shape[1]
+
+        self.white_pixels = self.count_white_pixels()  # faster init without
+
+    def load_image(self, file_path):
+        image = Image.open(file_path).convert("L")
+        image = np.array(image)
+        image = np.swapaxes(image, 1, 0)
+
+        return image
+
+    def count_white_pixels(self):
+        counter = 0
+        for row in range(self.height):
+            for column in range(self.width):
+                if self.image[column, row] == WHITE:
+                    counter += 1
+        return counter
+
 
 class CameraEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 1}
@@ -18,14 +47,22 @@ class CameraEnv(gym.Env):
     def __init__(self, render_mode=None):
 
         self.final_reward = 1000
+        self.termination_reward = 300
         self.time_factor = 100
+
         self.step_limit = 100
 
         self.step_counter = 0
         self.render_mode = render_mode
 
-        seed = 44
-        self.camera = cam.Camera()
+        placenta_image_path = "placenta.png"
+        env = Placenta(placenta_image_path)
+        self.white_pixels = env.white_pixels
+
+        viewport_width = 256
+        viewport_height = 256
+        step_size = 32
+        self.camera = cam.Camera(env, viewport_width, viewport_height, step_size)
 
         self.action_space = spaces.Discrete(len(cam.CameraAction))
 
@@ -42,7 +79,7 @@ class CameraEnv(gym.Env):
         self.camera.reset(seed=seed)
         self.step_counter = 0
 
-        observations = self.camera.image.swapaxes(0, 2)
+        observations = self.camera.observation.swapaxes(0, 2)
 
         info = {}
 
@@ -55,7 +92,7 @@ class CameraEnv(gym.Env):
 
         prev_num_pixels = self.camera.seen_white_pixels
 
-        target_reached = self.camera.perform_action(cam.CameraAction(action))
+        action_succes = self.camera.perform_action(cam.CameraAction(action))
         self.step_counter += 1
 
         new_seen_pixels = self.camera.seen_white_pixels - prev_num_pixels
@@ -66,12 +103,15 @@ class CameraEnv(gym.Env):
             truncated = True
 
         terminated = False
-        if target_reached:
+        if not action_succes:
+            reward -= self.termination_reward
+            terminated = True
+
+        elif self.camera.seen_white_pixels == self.white_pixels:
             reward += self.final_reward
             terminated = True
 
-        # observations = self.camera.image.flatten()
-        observations = self.camera.image.swapaxes(0, 2)
+        observations = self.camera.observation.swapaxes(0, 2)
 
         info = {}
 
@@ -98,6 +138,6 @@ if __name__ == "__main__":
 
     observations = env.reset()[0]
 
-    for i in range(10):
+    for i in range(100):
         rand_action = env.action_space.sample()
         observations, reward, terminated, _, _ = env.step(rand_action)
