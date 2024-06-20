@@ -3,7 +3,7 @@ from gymnasium import spaces
 from gymnasium.envs.registration import register
 from gymnasium.utils.env_checker import check_env
 
-import v0.v0_camera as cam
+import v0.camera as cam
 import numpy as np
 
 # Register this module as a gym environment. Once registered, the id is usable in gym.make().

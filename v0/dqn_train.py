@@ -6,7 +6,7 @@ import random
 import torch
 from torch import nn
 import torch.nn.functional as F
-import v0.v0_camera_env as v0_camera_env # Even though we don't use this class here, we should include it here so that it registers the Camera environment.
+import v0.camera_env as camera_env # Even though we don't use this class here, we should include it here so that it registers the Camera environment.
 
 
 # Define model
@@ -263,5 +263,5 @@ if __name__ == '__main__':
 
     frozen_lake = CameraDQL()
     is_slippery = False
-    frozen_lake.train(1000)
-    frozen_lake.test(1)
+    frozen_lake.train(10000)
+    frozen_lake.test(10)
