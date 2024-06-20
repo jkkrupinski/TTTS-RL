@@ -65,7 +65,7 @@ class Camera:
         self.get_observation()
 
     def fill_map(self, observation, x_begin, y_begin):
-        
+
         for x_cam in range(observation.shape[0]):
             for y_cam in range(observation.shape[1]):
                 x_map, y_map = self.cam2map(x_cam, y_cam, x_begin, y_begin)

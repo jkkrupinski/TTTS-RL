@@ -47,10 +47,10 @@ class CameraEnv(gym.Env):
     def __init__(self, render_mode=None):
 
         self.final_reward = 1000
-        self.termination_reward = 300
-        self.time_factor = 100
+        self.termination_penalty = 300
+        self.time_penalty = 100
 
-        self.step_limit = 100
+        self.step_limit = 40
 
         self.step_counter = 0
         self.render_mode = render_mode
@@ -61,7 +61,7 @@ class CameraEnv(gym.Env):
 
         viewport_width = 256
         viewport_height = 256
-        step_size = 32
+        step_size = 256
         self.camera = cam.Camera(env, viewport_width, viewport_height, step_size)
 
         self.action_space = spaces.Discrete(len(cam.CameraAction))
@@ -69,7 +69,7 @@ class CameraEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(1, 256, 256),
+            shape=(1, viewport_width, viewport_height),
             dtype=np.uint8,
         )
 
@@ -96,7 +96,7 @@ class CameraEnv(gym.Env):
         self.step_counter += 1
 
         new_seen_pixels = self.camera.seen_white_pixels - prev_num_pixels
-        reward = new_seen_pixels - self.time_factor
+        reward = new_seen_pixels - self.time_penalty
 
         truncated = False
         if self.step_counter > self.step_limit:
@@ -104,7 +104,7 @@ class CameraEnv(gym.Env):
 
         terminated = False
         if not action_succes:
-            reward -= self.termination_reward
+            reward -= self.termination_penalty
             terminated = True
 
         elif self.camera.seen_white_pixels == self.white_pixels:
@@ -132,12 +132,12 @@ class CameraEnv(gym.Env):
 if __name__ == "__main__":
     env = gym.make("camera-v1", render_mode="human")
 
-    print("Check environment begin")
-    check_env(env.unwrapped)
-    print("Check environment end")
+    # print("Check environment begin")
+    # check_env(env.unwrapped)
+    # print("Check environment end")
 
     observations = env.reset()[0]
 
-    for i in range(100):
+    for i in range(40):
         rand_action = env.action_space.sample()
         observations, reward, terminated, _, _ = env.step(rand_action)

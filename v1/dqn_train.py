@@ -310,8 +310,8 @@ class CameraDQL:
 
 if __name__ == "__main__":
 
-    camera_dql = CameraDQL()
-    camera_dql.train(10000)
+    # camera_dql = CameraDQL()
+    # camera_dql.train(10000)
 
-    # camera_dql = CameraDQL(True)
-    # camera_dql.test(10)
+    camera_dql = CameraDQL(True)
+    camera_dql.test(1)
