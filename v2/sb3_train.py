@@ -17,18 +17,12 @@ checkpoint_callback = CheckpointCallback(
     save_vecnormalize=True,
 )
 
-env = gym.make("camera-v2", render_mode=None)
+# env = gym.make("camera-v2", render_mode=None)
 
-num_cpu = 7
+num_cpu = 4
 env = make_vec_env("camera-v2", n_envs=num_cpu, vec_env_cls=DummyVecEnv)
 
 model = DQN("MlpPolicy", env, verbose=1, buffer_size=1000)
-
-# # loading models
-# model = DQN.load("logs/rl_model_60000_steps.zip")
-# model.load_replay_buffer('logs/rl_model_replay_buffer_60000_steps.pkl')
-# model.set_env(env)
-
 
 model.learn(
     total_timesteps=200_000,
@@ -37,21 +31,10 @@ model.learn(
     callback=checkpoint_callback,
 )
 
-model.save("models/dqn_camera2_5")
 
+model.save("models/dqn_camera2_5")
 
 del model  # remove to demonstrate saving and loading
 
 model = DQN.load("models/dqn_camera2_5")
 
-env = gym.make("camera-v2", render_mode="human")
-
-
-obs, info = env.reset()
-
-while True:
-
-    action, _states = model.predict(obs, deterministic=True)
-    obs, reward, terminated, truncated, info = env.step(action)
-    if terminated or truncated:
-        obs, info = env.reset()
