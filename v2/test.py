@@ -16,7 +16,6 @@ model.set_env(env)
 
 obs, info = env.reset()
 
-# change spawning of mat to allways first one is 1 not 2
 
 while True:
 

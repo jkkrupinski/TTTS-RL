@@ -55,8 +55,8 @@ class Agent:
         self.map_position = [7 * 256, 5 * 256]
         # self.placenta_start_position = [3 * 256, 2 * 256] # debug
         self.placenta_start_position = [
-            random.randint(0, 7 - 1) * 256,  # placenta 7x5
-            random.randint(0, 5 - 1) * 256,
+            random.randint(0, 6 - 1) * 256,     # placenta 7x5
+            random.randint(0, 4 - 1) * 256,     # 6,4 spawn not to start on the edge of placenta
         ]
         self.placenta_position = self.placenta_start_position
 
