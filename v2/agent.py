@@ -15,9 +15,7 @@ class Actions(Enum):
 
 
 class Agent:
-    def __init__(
-        self, placenta, viewport_width, viewport_height, step_size, seed=None
-    ) -> None:
+    def __init__(self, placenta, viewport_width, viewport_height, step_size, seed) -> None:
 
         self.placenta = placenta
 
@@ -25,11 +23,11 @@ class Agent:
         self.viewport_height = viewport_height
 
         self.step = step_size
-        self.seed = seed
+
 
         self._init_map()
         self._init_map_image()
-        self._init_start_position()
+        self._init_start_position(seed)
 
         self.seen_areas = 0
 
@@ -51,11 +49,11 @@ class Agent:
             dtype=np.uint8,
         )
 
-    def _init_start_position(self):
-        random.seed(self.seed)
+    def _init_start_position(self, seed):
+        random.seed(seed)
 
         self.map_position = [7 * 256, 5 * 256]
-        # self.placenta_start_position = [3 * 256, 2 * 256]
+        # self.placenta_start_position = [3 * 256, 2 * 256] # debug
         self.placenta_start_position = [
             random.randint(0, 7 - 1) * 256,  # placenta 7x5
             random.randint(0, 5 - 1) * 256,
@@ -125,10 +123,10 @@ class Agent:
             ] = 2
             return False
 
-    def reset(self):
+    def reset(self, seed):
         self._init_map()
         self._init_map_image()
-        self._init_start_position()
+        self._init_start_position(seed)
 
         self.seen_areas = 0
 
@@ -183,18 +181,8 @@ class Agent:
                 self.placenta_position[1] += self.step
                 action_succes = True
 
-        # print("map position: ", self.map_position[0] / 256, self.map_position[1] / 256)
-        # print(
-        #     "placenta position: ",
-        #     self.placenta_position[0] / 256,
-        #     self.placenta_position[1] / 256,
-        # )
-
         if action_succes and self.is_within_placenta():
             discovered_new_area = self.update_map()
-
-        # print("success, discovered?: ", action_succes, discovered_new_area)
-        # print()
 
         return action_succes, discovered_new_area
 

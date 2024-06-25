@@ -54,7 +54,7 @@ class Environment(gym.Env):
         placenta_image_path = "placenta.png"
         placenta = Placenta(placenta_image_path)
 
-        self.placenta_areas = 30
+        self.placenta_areas = 30 * 0.8
 
         viewport_width = 256
         viewport_height = 256
@@ -78,7 +78,7 @@ class Environment(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        self.camera.reset()
+        self.camera.reset(seed)
         self.step_counter = 0
 
         observations = self.camera.map.flatten()
@@ -86,6 +86,7 @@ class Environment(gym.Env):
         info = {}
 
         if self.render_mode == "human":
+            print("Seed: ", seed)
             self.render()
 
         return observations, info
