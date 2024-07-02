@@ -11,31 +11,23 @@ import time
 
 
 class DQN(nn.Module):
-    def __init__(self, input_shape, output_actions):
-        super().__init__()
-
-        self.input_shape = input_shape
-        self.output_actions = output_actions
-
-        self.model = self.create_model()
-
-    def create_model(self):
-        layers = [
-            nn.Linear(self.input_shape, 256),
-            nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, self.output_actions),
-        ]
-        return nn.Sequential(*layers)
+    def __init__(self, input_dim, output_dim):
+        super(DQN, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, output_dim)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        return self.model(x)
+        x = self.relu(self.fc1(x))
+        x = self.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
 # Use this to check if DQN is valid
-temp_dqn = DQN(1, 4)  # (1 channels, 4 actions)
-temp_tensor = torch.randn(1, 1, 15, 11)  # (batch, channel, row, column)
+temp_dqn = DQN(165, 4)  # (165 input, 4 actions)
+temp_tensor = torch.randn(165)  # (batch, channel, row, column)
 temp_dqn(temp_tensor)
 
 
@@ -81,7 +73,7 @@ class CameraDQL:
 
     def init_env(self, render):
 
-        self.env = gym.make("camera-v1", render_mode="human" if render else None)
+        self.env = gym.make("camera-v2", render_mode="human" if render else None)
         self.num_actions = self.env.action_space.n
         self.actions = [
             "U",
@@ -96,7 +88,7 @@ class CameraDQL:
         return torch.unsqueeze(torch.from_numpy(state.astype(np.float32)), 0)
 
     def build_model(self):
-        return DQN(input_shape=1, out_actions=self.num_actions)
+        return DQN(input_dim=165, output_dim=self.num_actions)
 
     def save(self, name):
         torch.save(self.policy_dqn.state_dict(), name)
@@ -264,7 +256,7 @@ class CameraDQL:
 
     def test(self, episodes):
 
-        self.policy_dqn = self.load("models/model_fin.pt")
+        self.policy_dqn = self.load("models/model_26000.pt")
         self.policy_dqn.eval()
 
         for _ in range(episodes):
@@ -287,7 +279,7 @@ class CameraDQL:
 if __name__ == "__main__":
 
     # camera_dql = CameraDQL()
-    # camera_dql.train(10000)
+    # camera_dql.train(100_000)
 
     camera_dql = CameraDQL(True)
-    camera_dql.test(1)
+    camera_dql.test(6)

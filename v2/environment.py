@@ -41,12 +41,12 @@ class Environment(gym.Env):
 
     def __init__(self, render_mode=None):
 
-        self.final_reward = 10
+        self.final_reward = 40
         self.discovery_reward = 5
-        self.termination_penalty = 10
+        self.termination_penalty = 19
         self.time_penalty = 1
 
-        self.step_limit = 50
+        self.step_limit = 60
 
         self.step_counter = 0
         self.render_mode = render_mode
@@ -54,7 +54,7 @@ class Environment(gym.Env):
         placenta_image_path = "placenta.png"
         placenta = Placenta(placenta_image_path)
 
-        self.placenta_areas = 30 * 0.8
+        self.placenta_areas = 30 * 0.9
 
         viewport_width = 256
         viewport_height = 256
@@ -133,6 +133,7 @@ class Environment(gym.Env):
 
     def render(self):
         self.camera.render()
+        print(self.camera.map)
 
 
 if __name__ == "__main__":

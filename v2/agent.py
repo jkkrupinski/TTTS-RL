@@ -15,7 +15,9 @@ class Actions(Enum):
 
 
 class Agent:
-    def __init__(self, placenta, viewport_width, viewport_height, step_size, seed) -> None:
+    def __init__(
+        self, placenta, viewport_width, viewport_height, step_size, seed
+    ) -> None:
 
         self.placenta = placenta
 
@@ -23,7 +25,6 @@ class Agent:
         self.viewport_height = viewport_height
 
         self.step = step_size
-
 
         self._init_map()
         self._init_map_image()
@@ -55,8 +56,9 @@ class Agent:
         self.map_position = [7 * 256, 5 * 256]
         # self.placenta_start_position = [3 * 256, 2 * 256] # debug
         self.placenta_start_position = [
-            random.randint(0, 6 - 1) * 256,     # placenta 7x5
-            random.randint(0, 4 - 1) * 256,     # 6,4 spawn not to start on the edge of placenta
+            random.randint(0, 6 - 1) * 256,  # placenta 7x5
+            random.randint(0, 4 - 1)
+            * 256,  # 6,4 spawn not to start on the edge of placenta
         ]
         self.placenta_position = self.placenta_start_position
 
@@ -90,9 +92,25 @@ class Agent:
 
         return x_map, y_map
 
-    def update_map(self):
+    def fill_map_image(self):
         observation = self.get_observation()
+        render = True  # for debug faster learning
         filled = False
+
+        for x_cam in range(observation.shape[0]):
+            for y_cam in range(observation.shape[1]):
+                x_map, y_map = self.cam2map(x_cam, y_cam)
+
+                if observation[x_cam, y_cam] == WHITE:
+                    filled = True
+
+                    if render:
+                        self.map_image[x_map, y_map] = WHITE
+                    else:
+                        return filled
+        return filled
+
+    def update_map(self):
 
         # check if been there already
         if (
@@ -101,16 +119,8 @@ class Agent:
         ):
             return False
 
-        # fill map image
-        for x_cam in range(observation.shape[0]):
-            for y_cam in range(observation.shape[1]):
-                x_map, y_map = self.cam2map(x_cam, y_cam)
+        filled = self.fill_map_image()
 
-                if observation[x_cam, y_cam] == WHITE:
-                    self.map_image[x_map, y_map] = WHITE
-                    filled = True
-
-        # fill map
         if filled:
             self.map[
                 int(self.map_position[0] / 256), int(self.map_position[1] / 256)
@@ -183,6 +193,14 @@ class Agent:
 
         if action_succes and self.is_within_placenta():
             discovered_new_area = self.update_map()
+
+        map_x_index = int(self.map_position[0] / 256)
+        map_y_index = int(self.map_position[1] / 256)
+
+        if discovered_new_area:
+            self.map[map_x_index, map_y_index] = 1
+        elif self.map[map_x_index, map_y_index] == 0:
+            self.map[map_x_index, map_y_index] = 2
 
         return action_succes, discovered_new_area
 
