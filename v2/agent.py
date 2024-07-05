@@ -62,18 +62,18 @@ class Agent:
         ]
         self.placenta_position = self.placenta_start_position
 
-    def get_observation(self):
+    def get_viewport(self):
         x_begin = self.placenta_position[0]
         x_end = self.placenta_position[0] + self.viewport_width
 
         y_begin = self.placenta_position[1]
         y_end = self.placenta_position[1] + self.viewport_height
 
-        observation = self.placenta.image[
-            x_begin:x_end, y_begin:y_end, np.newaxis
-        ].astype(np.uint8)
+        viewport = self.placenta.image[x_begin:x_end, y_begin:y_end, np.newaxis].astype(
+            np.uint8
+        )
 
-        return observation
+        return viewport
 
     def map2placenta(self):
         x = self.map_position[0] - self.placenta_start_position[0]
@@ -93,7 +93,7 @@ class Agent:
         return x_map, y_map
 
     def fill_map_image(self):
-        observation = self.get_observation()
+        observation = self.get_viewport()
         render = True  # for debug faster learning
         filled = False
 
@@ -109,6 +109,20 @@ class Agent:
                     else:
                         return filled
         return filled
+
+    def cantor_pairing(self, x, y):
+        return (x + y) * (x + y + 1) // 2 + y
+
+    def get_observation(self):
+        flatten_map = self.map.flatten()
+        
+        position_index = self.cantor_pairing(
+            int(self.map_position[0] / 256), int(self.map_position[1] / 256)
+        )
+        observation = np.append(flatten_map, position_index)
+        observation = observation.astype(np.uint8)
+
+        return observation
 
     def update_map(self):
 

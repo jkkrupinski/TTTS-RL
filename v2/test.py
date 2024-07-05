@@ -9,8 +9,8 @@ import random
 env = gym.make("camera-v2",  render_mode="human")
 
 # loading models
-model = DQN.load("logs/rl_model3_500000_steps.zip")
-model.load_replay_buffer('logs/rl_model3_replay_buffer_500000_steps.pkl') # 135000
+model = DQN.load("logs/rl_model3_1000000_steps.zip")
+model.load_replay_buffer('logs/rl_model3_replay_buffer_1000000_steps.pkl') # 135000
 model.set_env(env)
 
 

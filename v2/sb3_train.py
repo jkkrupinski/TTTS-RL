@@ -30,7 +30,7 @@ model = DQN("MlpPolicy", env, verbose=1, buffer_size=1000, exploration_fraction=
 
 
 model.learn(
-    total_timesteps=500_000,
+    total_timesteps=1_000_000,
     log_interval=100,
     progress_bar=True,
     callback=checkpoint_callback,

@@ -54,7 +54,7 @@ class Environment(gym.Env):
         placenta_image_path = "placenta.png"
         placenta = Placenta(placenta_image_path)
 
-        self.placenta_areas = 30 * 0.9
+        self.placenta_areas = 26 # 30
 
         viewport_width = 256
         viewport_height = 256
@@ -70,8 +70,8 @@ class Environment(gym.Env):
 
         self.observation_space = spaces.Box(
             low=0,
-            high=2,
-            shape=((165,)),
+            high=255,
+            shape=((166,)),
             dtype=np.uint8,
         )
 
@@ -81,8 +81,7 @@ class Environment(gym.Env):
         self.camera.reset(seed)
         self.step_counter = 0
 
-        observations = self.camera.map.flatten()
-
+        observations = self.camera.get_observation()
         info = {}
 
         if self.render_mode == "human":
@@ -118,7 +117,7 @@ class Environment(gym.Env):
             reward += self.final_reward
             terminated = True
 
-        observations = self.camera.map.flatten()
+        observations = self.camera.get_observation()
         info = {}
 
         if self.render_mode == "human":
