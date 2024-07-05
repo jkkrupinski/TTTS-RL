@@ -2,15 +2,16 @@ import gymnasium as gym
 
 import environment as environment
 from torch import nn
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 import random
+from stable_baselines3.common.env_util import make_vec_env
 
 
-env = gym.make("camera-v2",  render_mode="human")
+env = gym.make("camera-v2", render_mode="human")
+
 
 # loading models
-model = DQN.load("logs/rl_model3_1000000_steps.zip")
-model.load_replay_buffer('logs/rl_model3_replay_buffer_1000000_steps.pkl') # 135000
+model = PPO.load("logs/model_372000_steps.zip")
 model.set_env(env)
 
 

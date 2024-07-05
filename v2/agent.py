@@ -6,6 +6,12 @@ from matplotlib import pyplot as plt
 
 WHITE = 255
 
+UNDISCOVERED = 0
+FILLED = 1
+EMPTY = 2
+
+RENDER = False  # for debug faster learning
+
 
 class Actions(Enum):
     UP = 0
@@ -31,6 +37,7 @@ class Agent:
         self._init_start_position(seed)
 
         self.seen_areas = 0
+        self.agent_id = 30
 
         self.update_map()
 
@@ -39,13 +46,15 @@ class Agent:
         self.axes_img = plt.imshow(np.swapaxes(self.map_image, 1, 0))
 
     def _init_map(self):
-        self.map = np.zeros((15, 11), dtype=np.uint8)
+        self.map_width = 15
+        self.map_height = 11
+        self.map = np.zeros((self.map_width, self.map_height), dtype=np.uint8)
 
     def _init_map_image(self):
         self.map_image = np.zeros(
             (
-                15 * self.viewport_width,
-                11 * self.viewport_height,
+                self.map_width * self.viewport_width,
+                self.map_height * self.viewport_height,
             ),
             dtype=np.uint8,
         )
@@ -54,6 +63,7 @@ class Agent:
         random.seed(seed)
 
         self.map_position = [7 * 256, 5 * 256]
+
         # self.placenta_start_position = [3 * 256, 2 * 256] # debug
         self.placenta_start_position = [
             random.randint(0, 6 - 1) * 256,  # placenta 7x5
@@ -94,7 +104,6 @@ class Agent:
 
     def fill_map_image(self):
         observation = self.get_viewport()
-        render = True  # for debug faster learning
         filled = False
 
         for x_cam in range(observation.shape[0]):
@@ -104,47 +113,36 @@ class Agent:
                 if observation[x_cam, y_cam] == WHITE:
                     filled = True
 
-                    if render:
+                    if RENDER:
                         self.map_image[x_map, y_map] = WHITE
                     else:
                         return filled
         return filled
 
-    def cantor_pairing(self, x, y):
-        return (x + y) * (x + y + 1) // 2 + y
-
     def get_observation(self):
         flatten_map = self.map.flatten()
-        
-        position_index = self.cantor_pairing(
-            int(self.map_position[0] / 256), int(self.map_position[1] / 256)
-        )
-        observation = np.append(flatten_map, position_index)
-        observation = observation.astype(np.uint8)
 
-        return observation
+        return flatten_map
 
     def update_map(self):
+        filled = False
+
+        map_indexes = int(self.map_position[0] / 256), int(self.map_position[1] / 256)
 
         # check if been there already
-        if (
-            self.map[int(self.map_position[0] / 256), int(self.map_position[1] / 256)]
-            == 1
-        ):
+        if self.map[map_indexes] == FILLED:
+            self.map[map_indexes] = FILLED + self.agent_id
             return False
 
-        filled = self.fill_map_image()
+        if self.is_within_placenta():
+            filled = self.fill_map_image()
 
         if filled:
-            self.map[
-                int(self.map_position[0] / 256), int(self.map_position[1] / 256)
-            ] = 1
+            self.map[map_indexes] = FILLED + self.agent_id
             self.seen_areas += 1
             return True
         else:
-            self.map[
-                int(self.map_position[0] / 256), int(self.map_position[1] / 256)
-            ] = 2
+            self.map[map_indexes] = EMPTY + self.agent_id
             return False
 
     def reset(self, seed):
@@ -181,6 +179,10 @@ class Agent:
         action_succes = False
         discovered_new_area = False
 
+        previous_map_indexes = int(self.map_position[0] / 256), int(
+            self.map_position[1] / 256
+        )
+
         if action == Actions.LEFT:
             if self.is_x_in_map(self.map_position[0] - self.step):
                 self.map_position[0] -= self.step
@@ -202,19 +204,13 @@ class Agent:
         elif action == Actions.DOWN:
             if self.is_y_in_map(self.map_position[1] + self.step):
                 self.map_position[1] += self.step
+
                 self.placenta_position[1] += self.step
                 action_succes = True
 
-        if action_succes and self.is_within_placenta():
+        if action_succes:
+            self.map[previous_map_indexes] -= self.agent_id
             discovered_new_area = self.update_map()
-
-        map_x_index = int(self.map_position[0] / 256)
-        map_y_index = int(self.map_position[1] / 256)
-
-        if discovered_new_area:
-            self.map[map_x_index, map_y_index] = 1
-        elif self.map[map_x_index, map_y_index] == 0:
-            self.map[map_x_index, map_y_index] = 2
 
         return action_succes, discovered_new_area
 

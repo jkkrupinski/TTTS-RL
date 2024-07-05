@@ -2,7 +2,7 @@ import gymnasium as gym
 
 import environment as environment
 from torch import nn
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
@@ -10,18 +10,15 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 checkpoint_callback = CheckpointCallback(
-    save_freq=5000,
+    save_freq=1000,
     save_path="./logs/",
-    name_prefix="rl_model3",
-    save_replay_buffer=True,
+    name_prefix="model",
     save_vecnormalize=True,
 )
 
 env = gym.make("camera-v2", render_mode=None)
 
-# num_cpu = 4
-# env = make_vec_env("camera-v2", n_envs=num_cpu, vec_env_cls=DummyVecEnv)
-model = DQN("MlpPolicy", env, verbose=1, buffer_size=1000, exploration_fraction=0.9)
+model = PPO("MlpPolicy", env, verbose=1)
 
 # # loading models
 # model = DQN.load("logs/rl_model2_200000_steps.zip")
@@ -30,14 +27,10 @@ model = DQN("MlpPolicy", env, verbose=1, buffer_size=1000, exploration_fraction=
 
 
 model.learn(
-    total_timesteps=1_000_000,
-    log_interval=100,
+    total_timesteps=400_000,
+    log_interval=1,
     progress_bar=True,
     callback=checkpoint_callback,
 )
 
-
-model.save("models/dqn_camera_fin")
-
-# del model  # remove to demonstrate saving and loading
-# model = DQN.load("models/dqn_camera")
+model.save("models/model_fin")

@@ -54,7 +54,7 @@ class Environment(gym.Env):
         placenta_image_path = "placenta.png"
         placenta = Placenta(placenta_image_path)
 
-        self.placenta_areas = 26 # 30
+        self.placenta_areas = 30 
 
         viewport_width = 256
         viewport_height = 256
@@ -70,8 +70,8 @@ class Environment(gym.Env):
 
         self.observation_space = spaces.Box(
             low=0,
-            high=255,
-            shape=((166,)),
+            high=32,
+            shape=((165,)),
             dtype=np.uint8,
         )
 
