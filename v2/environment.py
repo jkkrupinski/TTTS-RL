@@ -26,7 +26,7 @@ class Placenta:
         self.width = self.image.shape[0]
         self.height = self.image.shape[1]
 
-        # self.filled_areas = 30
+        self.filled_areas = 30
 
     def load_image(self, file_path):
         image = Image.open(file_path).convert("L")
@@ -54,7 +54,7 @@ class Environment(gym.Env):
         placenta_image_path = "placenta.png"
         placenta = Placenta(placenta_image_path)
 
-        self.placenta_areas = 30 
+        self.placenta_areas = placenta.filled_areas - 1
 
         viewport_width = 256
         viewport_height = 256
@@ -63,7 +63,7 @@ class Environment(gym.Env):
         seed = random.randint(0, 100)
 
         self.camera = cam.Agent(
-            placenta, viewport_width, viewport_height, step_size, seed
+            placenta, viewport_width, viewport_height, step_size, seed, render_mode
         )
 
         self.action_space = spaces.Discrete(len(cam.Actions))
