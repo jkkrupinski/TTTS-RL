@@ -10,8 +10,6 @@ UNDISCOVERED = 0
 FILLED = 1
 EMPTY = 2
 
-RENDER = False  # for debug faster learning
-
 
 class Actions(Enum):
     UP = 0
@@ -22,10 +20,11 @@ class Actions(Enum):
 
 class Agent:
     def __init__(
-        self, placenta, viewport_width, viewport_height, step_size, seed
+        self, placenta, viewport_width, viewport_height, step_size, seed, render_mode
     ) -> None:
 
         self.placenta = placenta
+        self.render_mode = render_mode
 
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
@@ -113,7 +112,7 @@ class Agent:
                 if observation[x_cam, y_cam] == WHITE:
                     filled = True
 
-                    if RENDER:
+                    if self.render_mode:
                         self.map_image[x_map, y_map] = WHITE
                     else:
                         return filled
@@ -214,24 +213,29 @@ class Agent:
 
         return action_succes, discovered_new_area
 
-    def render(self, mark_position=True):
-        swapped_map = np.swapaxes(self.map_image, 1, 0)
+    def render(self):
 
-        mark_size = 40
-        mark_color = 128
-
-        if mark_position:
-            marked_map = swapped_map.__deepcopy__(None)
-            marked_map[
-                self.map_position[1] : self.map_position[1] + mark_size,
-                self.map_position[0] : self.map_position[0] + mark_size,
-            ] = (
-                np.ones((mark_size, mark_size)) * mark_color
-            )
-            self.axes_img.set_data(marked_map)
-
-        else:
-            self.axes_img.set_data(swapped_map)
+        swapped_map_image = np.swapaxes(self.map_image, 1, 0)
+        self.draw_mark(swapped_map_image)
 
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+    def draw_mark(self, swapped_map_image):
+        mark_size = 50
+        mark_color = 128
+
+        marked_map = swapped_map_image.__deepcopy__(None)
+
+        marked_map[
+            self.map_position[1]
+            + int((self.step - mark_size) / 2) : self.map_position[1]
+            + int((self.step + mark_size) / 2),
+            self.map_position[0]
+            + int((self.step - mark_size) / 2) : self.map_position[0]
+            + int((self.step + mark_size) / 2),
+        ] = (
+            np.ones((mark_size, mark_size)) * mark_color
+        )
+
+        self.axes_img.set_data(marked_map)

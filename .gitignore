@@ -1,4 +1,6 @@
 __pycache__
+.vscode
+
 models
 logs
-.vscode
+tensorboard
