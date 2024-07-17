@@ -26,6 +26,9 @@ class Placenta:
         self.width = self.image.shape[0]
         self.height = self.image.shape[1]
 
+        self.width_idx = 7
+        self.height_idx = 5
+
         self.filled_areas = 30
 
     def load_image(self, file_path):

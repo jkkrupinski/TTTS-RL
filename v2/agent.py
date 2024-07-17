@@ -18,6 +18,24 @@ class Actions(Enum):
     RIGHT = 3
 
 
+class Map:
+    def __init__(self, step):
+        self.width = 15
+        self.height = 11
+
+        self.grid = np.zeros((self.width, self.height), dtype=np.uint8)
+
+        self.image = np.zeros(
+            (
+                self.width * step,
+                self.height * step,
+            ),
+            dtype=np.uint8,
+        )
+
+        self.position = 1
+
+
 class Agent:
     def __init__(
         self, placenta, viewport_width, viewport_height, step_size, seed, render_mode
@@ -25,35 +43,29 @@ class Agent:
 
         self.placenta = placenta
         self.render_mode = render_mode
+        self.agent_id = 30
 
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
 
         self.step = step_size
 
-        self._init_map()
-        self._init_map_image()
-        self._init_start_position(seed)
-
-        self.seen_areas = 0
-        self.agent_id = 30
-
-        self.update_map()
+        self.reset(seed)
 
         plt.ion()
         self.fig = plt.figure()
         self.axes_img = plt.imshow(np.swapaxes(self.map_image, 1, 0))
 
     def _init_map(self):
-        self.map_width = 15
-        self.map_height = 11
-        self.map = np.zeros((self.map_width, self.map_height), dtype=np.uint8)
+        self.map_width_idx = 15
+        self.map_height_idx = 11
+        self.map = np.zeros((self.map_width_idx, self.map_height_idx), dtype=np.uint8)
 
     def _init_map_image(self):
         self.map_image = np.zeros(
             (
-                self.map_width * self.viewport_width,
-                self.map_height * self.viewport_height,
+                self.map_width_idx * self.viewport_width,
+                self.map_height_idx * self.viewport_height,
             ),
             dtype=np.uint8,
         )
@@ -61,13 +73,17 @@ class Agent:
     def _init_start_position(self, seed):
         random.seed(seed)
 
-        self.map_position = [7 * 256, 5 * 256]
+        self.map_position = [
+            self.placenta.width_idx * self.step,
+            self.placenta.height_idx * self.step,
+        ]
 
-        # self.placenta_start_position = [3 * 256, 2 * 256] # debug
+        # Not to spawn on empty edges, instead somewhere in middle of placenta
+        offset = 2
+
         self.placenta_start_position = [
-            random.randint(0, 6 - 1) * 256,  # placenta 7x5
-            random.randint(0, 4 - 1)
-            * 256,  # 6,4 spawn not to start on the edge of placenta
+            random.randint(0, self.placenta.width_idx - offset) * self.step,
+            random.randint(0, self.placenta.height_idx - offset) * self.step,
         ]
         self.placenta_position = self.placenta_start_position
 
@@ -119,17 +135,17 @@ class Agent:
         return filled
 
     def get_observation(self):
-        flatten_map = self.map.flatten()
+        return self.map.flatten()
 
-        return flatten_map
+    def get_map_indexes(self):
+        return int(self.map_position[0] / 256), int(self.map_position[1] / 256)
 
     def update_map(self):
         filled = False
 
-        map_indexes = int(self.map_position[0] / 256), int(self.map_position[1] / 256)
+        map_indexes = self.get_map_indexes()
 
-        # check if been there already
-        if self.map[map_indexes] == FILLED:
+        if self.been_there(map_indexes):
             self.map[map_indexes] = FILLED + self.agent_id
             return False
 
@@ -150,7 +166,6 @@ class Agent:
         self._init_start_position(seed)
 
         self.seen_areas = 0
-
         self.update_map()
 
     def is_x_in_map(self, x) -> bool:
@@ -162,6 +177,9 @@ class Agent:
         if y >= 0 and y <= self.map_image.shape[1] - self.viewport_height:
             return True
         return False
+
+    def been_there(self, map_indexes):
+        return self.map[map_indexes] == FILLED
 
     def is_within_placenta(self) -> bool:
         is_within_x = (
@@ -178,9 +196,7 @@ class Agent:
         action_succes = False
         discovered_new_area = False
 
-        previous_map_indexes = int(self.map_position[0] / 256), int(
-            self.map_position[1] / 256
-        )
+        previous_map_indexes = self.get_map_indexes()
 
         if action == Actions.LEFT:
             if self.is_x_in_map(self.map_position[0] - self.step):
@@ -214,7 +230,6 @@ class Agent:
         return action_succes, discovered_new_area
 
     def render(self):
-
         swapped_map_image = np.swapaxes(self.map_image, 1, 0)
         self.draw_mark(swapped_map_image)
 
