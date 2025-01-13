@@ -57,27 +57,29 @@ Environment v1 is more complicated than v0. Instead of grid world agent moves it
     - mini_batch_size = 32  (size of the training data set sampled from the replay memory)
 
 
-## Run DQL
+## Run Training
 
 `python3 v1/v1_camera_train_dqn.py` - for training using custom dqn implementation
 
 `python3 v1/v1_sb3.py` - for training using SB3 dqn implementation
 
+`python3 v2/sb3_train.py` - for training using SB3 dqn implementation
+
+`python3 v2/dqn_train.py` - for training using SB3 dqn implementation
+
+## Tests
+
+To run tests on the environment V2 with the PPO algorithm:
+`python3 v2/test.py` 
+
+[Watch mapping demo](media/trained_agent.gif)
+
+Result of RL mapping using PPO algorithm:
+
+![Result of RL mapping using PPO algorithm](media/contr.png)
+
+
 ## Requirements
 - Gymansium
 - pyTorch
 - Stable Baselines3
-
-
-## ToDo
-- package enviroment to use with pip
-- change displaying figure when render = False
-- saving model every X episodes with different names
-- capturing learning time and debug info
-- add plots to improve learning interactive
-- optimize calculations e.g. normalize image pixels
-- finish README
-- play with parameters [num episodes, hyperparameters, step_size, viewport_size]
-- v3 with mujoco enviroment
-- spelling check
-- alternative algorithm for mapping (split viewport into 4 parts calc each parts whit pixels decide on that)
